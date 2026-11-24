@@ -1,0 +1,38 @@
+name: Temporary public MediaWiki acceptance
+on:
+  push:
+    branches: [mediawiki-public-test]
+    paths:
+      - .github/workflows/mediawiki-public-acceptance.yml
+permissions:
+  contents: read
+jobs:
+  wiki:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - name: Read isolated test branch
+        run: git clone --quiet --depth 1 --single-branch --branch mediawiki-public-test "https://github.com/$GITHUB_REPOSITORY.git" fixtures
+      - name: Start MediaWiki and read-only endpoint
+        id: prepare
+        working-directory: fixtures
+        run: bash wiki-session.sh prepare
+      - name: Announce public test baseline
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: wiki-ready-${{ steps.prepare.outputs.hostname }}-${{ steps.prepare.outputs.page_id }}
+          path: ${{ runner.temp }}/wiki-evidence/endpoint.json
+          retention-days: 3
+      - name: Publish 24 separate revisions
+        working-directory: fixtures
+        run: bash wiki-session.sh publish
+      - name: Preserve revision metadata and export
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: wiki-public-release-records
+          path: |
+            ${{ runner.temp }}/wiki-evidence/*.json
+            ${{ runner.temp }}/wiki-evidence/revisions.xml
+          retention-days: 14
+      - name: Leave time for read-only public verification
+        run: sleep 160
