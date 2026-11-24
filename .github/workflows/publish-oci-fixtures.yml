@@ -1,0 +1,36 @@
+name: Publish staged OCI fixtures
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-oci-fixtures.yml]
+permissions:
+  packages: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 26
+    steps:
+      - name: Publish each test archive by digest
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          trap 'rm -rf -- "$work"' EXIT
+          if ! command -v skopeo >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq skopeo
+          fi
+          git clone --quiet --depth=1 --single-branch --branch main "https://github.com/$REPOSITORY.git" "$work/files"
+          auth="$work/registry.json"
+          printf "%s" "$GHCR_TOKEN" | skopeo login --authfile "$auth" --username "$REGISTRY_USER" --password-stdin ghcr.io
+          image="ghcr.io/${REPOSITORY,,}:acceptance"
+          for n in $(seq -w 1 24); do
+            bundle="$work/files/public-$n.oci.tar"
+            echo "Publishing isolated test archive $n"
+            skopeo copy --preserve-digests --authfile "$auth" --digestfile "$work/digest" "oci-archive:$bundle" "docker://$image"
+            echo "Published $n $(cat "$work/digest")"
+            sleep 30
+          done
