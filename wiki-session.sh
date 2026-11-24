@@ -24,8 +24,7 @@ prepare() {
   docker run -d --name cw-public-wiki -p 127.0.0.1:8833:80 "$mediawiki_image"
   docker exec cw-public-wiki mkdir -p /var/www/data
   docker exec cw-public-wiki chown www-data:www-data /var/www/data
-  local -a install=(--dbtype sqlite --dbpath /var/www/data --dbname acceptance --scriptpath= --server=http://127.0.0.1:8833)
-  openssl rand -hex 24 | docker exec -i cw-public-wiki php maintenance/run.php install "${install[@]}" --passfile /dev/stdin 'Credential Watch acceptance' Admin
+  docker exec cw-public-wiki sh -c 'exec php maintenance/run.php install --dbtype sqlite --dbpath /var/www/data --dbname acceptance --scriptpath= --server=http://127.0.0.1:8833 --pass "$(openssl rand -hex 24)" "Credential Watch acceptance" Admin'
   docker exec cw-public-wiki chown -R www-data:www-data /var/www/data
   echo 'Clean baseline for a synthetic detection exercise.' | edit baseline
   query > "$artifacts/baseline.json"
