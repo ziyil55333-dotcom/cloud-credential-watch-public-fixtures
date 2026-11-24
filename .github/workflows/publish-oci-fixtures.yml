@@ -30,7 +30,9 @@ jobs:
           for n in $(seq -w 1 24); do
             bundle="$work/files/public-$n.oci.tar"
             echo "Publishing isolated test archive $n"
-            skopeo copy --preserve-digests --authfile "$auth" --digestfile "$work/digest" "oci-archive:$bundle" "docker://$image"
+            mkdir "$work/layout-$n"
+            tar --extract --no-same-owner --no-same-permissions --file "$bundle" --directory "$work/layout-$n"
+            skopeo copy --preserve-digests --authfile "$auth" --digestfile "$work/digest" "oci:$work/layout-$n" "docker://$image"
             echo "Published $n $(cat "$work/digest")"
             sleep 30
           done
