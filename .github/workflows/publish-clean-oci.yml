@@ -1,0 +1,31 @@
+name: Publish clean OCI fixture
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-clean-oci.yml]
+  workflow_dispatch:
+permissions:
+  packages: write
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Build and publish empty baseline
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          export DOCKER_CONFIG="$(mktemp -d)"
+          work="$(mktemp -d)"
+          trap 'rm -rf -- "$DOCKER_CONFIG" "$work"' EXIT
+          image="ghcr.io/${REPOSITORY,,}:acceptance"
+          printf "%s
+" "No credential in this baseline." > "$work/baseline.txt"
+          printf "%s
+" "FROM scratch" "COPY baseline.txt /baseline.txt" > "$work/Dockerfile"
+          docker build --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" -t "$image" "$work"
+          printf "%s" "$GHCR_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
+          docker push "$image"
