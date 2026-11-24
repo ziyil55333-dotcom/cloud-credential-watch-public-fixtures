@@ -1,0 +1,5 @@
+<pre>
+# Synthetic fixture. This value has never been issued and grants no access.
+OS_USER=cw-fixture-06
+OS_PASSWORD=cw-unissued-batch-fixture-wiki-06
+</pre>
