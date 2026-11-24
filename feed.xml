@@ -6,6 +6,12 @@
     <description>公开配置文件中的凭据检查示例。</description>
     <language>zh-cn</language>
     <item>
+      <title>检查数据库连接配置（正文示例 07）</title>
+      <link>https://ziyil55333-dotcom.github.io/cloud-credential-watch-public-fixtures/public-07.html</link>
+      <guid isPermaLink="false">public-07</guid>
+      <description>数据库连接串可能把主机、账号和密码写在一起。以下演示使用保留域名，不连接数据库。</description>
+    </item>
+    <item>
       <title>检查 Linux 服务配置（代码块示例 06）</title>
       <link>https://ziyil55333-dotcom.github.io/cloud-credential-watch-public-fixtures/public-06.html</link>
       <guid isPermaLink="false">public-06</guid>
