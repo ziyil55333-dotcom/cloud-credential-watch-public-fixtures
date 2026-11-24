@@ -6,6 +6,12 @@
     <description>公开配置文件中的凭据检查示例。</description>
     <language>zh-cn</language>
     <item>
+      <title>检查 OAuth 应用配置（正文示例 03）</title>
+      <link>https://ziyil55333-dotcom.github.io/cloud-credential-watch-public-fixtures/public-03.html</link>
+      <guid isPermaLink="false">public-03</guid>
+      <description>OAuth 客户端配置应记录客户端标识和密钥的位置。以下演示使用从未签发的值。</description>
+    </item>
+    <item>
       <title>检查数据库连接配置（代码块示例 02）</title>
       <link>https://ziyil55333-dotcom.github.io/cloud-credential-watch-public-fixtures/public-02.html</link>
       <guid isPermaLink="false">public-02</guid>
