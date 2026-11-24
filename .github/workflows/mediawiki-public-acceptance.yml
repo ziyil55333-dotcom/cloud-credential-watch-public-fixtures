@@ -12,7 +12,9 @@ jobs:
     timeout-minutes: 14
     steps:
       - name: Read isolated test branch
-        run: git clone --quiet --depth 1 --single-branch --branch mediawiki-public-test "https://github.com/$GITHUB_REPOSITORY.git" fixtures
+        run: |
+          git clone --quiet --depth 1 --single-branch --branch mediawiki-public-test "https://github.com/$GITHUB_REPOSITORY.git" fixtures
+          test "$(git -C fixtures rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Start MediaWiki and read-only endpoint
         id: prepare
         working-directory: fixtures
