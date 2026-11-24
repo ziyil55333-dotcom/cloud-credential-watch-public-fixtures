@@ -22,10 +22,9 @@ jobs:
           work="$(mktemp -d)"
           trap 'rm -rf -- "$DOCKER_CONFIG" "$work"' EXIT
           image="ghcr.io/${REPOSITORY,,}:acceptance"
-          printf "%s
-" "No credential in this baseline." > "$work/baseline.txt"
-          printf "%s
-" "FROM scratch" "COPY baseline.txt /baseline.txt" > "$work/Dockerfile"
+          echo "No credential in this baseline." > "$work/baseline.txt"
+          echo "FROM scratch" > "$work/Dockerfile"
+          echo "COPY baseline.txt /baseline.txt" >> "$work/Dockerfile"
           docker build --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" -t "$image" "$work"
           printf "%s" "$GHCR_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
           docker push "$image"
