@@ -1,9 +1,8 @@
-name: Publish clean OCI fixture
+name: Publish clean OCI blind baseline
 on:
   push:
-    branches: [main]
+    branches: [codex/blind-oci]
     paths: [.github/workflows/publish-clean-oci.yml]
-  workflow_dispatch:
 permissions:
   packages: write
 jobs:
@@ -11,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - name: Build and publish empty baseline
+      - name: Build and publish a clean test image
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
@@ -21,7 +20,7 @@ jobs:
           export DOCKER_CONFIG="$(mktemp -d)"
           work="$(mktemp -d)"
           trap 'rm -rf -- "$DOCKER_CONFIG" "$work"' EXIT
-          image="ghcr.io/${REPOSITORY,,}:acceptance"
+          image="ghcr.io/${REPOSITORY,,}:blind-eval"
           echo "No credential in this baseline." > "$work/baseline.txt"
           echo "FROM scratch" > "$work/Dockerfile"
           echo "COPY baseline.txt /baseline.txt" >> "$work/Dockerfile"
