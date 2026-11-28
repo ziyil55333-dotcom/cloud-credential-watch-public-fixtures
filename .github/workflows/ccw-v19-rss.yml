@@ -29,9 +29,9 @@ jobs:
           git switch --detach FETCH_HEAD
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          test ! -e "$dir"
-          mkdir "$dir"
-          printf '%s\n' '<!doctype html>' '<html lang="en"><head><title>Clean baseline</title></head><body><p>Cloud Credential Watch clean article baseline</p></body></html>' > "$dir/baseline.html"
+          test "$(git rev-parse HEAD)" = a407a25e1015d1adf7fa6c7210d79c0eff863083
+          test -s "$dir/feed.xml"
+          next_build=0
           publish() {
             local number="$1" ref="$2" page="$3"
             python - "$dir/feed.xml" "$site" "$ref" "$page" <<'PY'
@@ -58,13 +58,23 @@ jobs:
           PY
             git add -- "$dir/$page" "$dir/feed.xml"
             git commit --quiet -m "Publish synthetic v19 article release $number"
-            git push origin HEAD:refs/heads/main
+            local push_log="$RUNNER_TEMP/ccw-v19-article-push.log"
+            blocked=false
+            if ! git push origin HEAD:refs/heads/main >"$push_log" 2>&1; then
+              if grep -q 'GH013' "$push_log" && grep -qi 'push protection' "$push_log"; then
+                echo "Blocked by GitHub push protection: article-$number"
+                git switch --detach HEAD^
+                blocked=true
+                return 0
+              fi
+              echo "Unexpected GitHub push failure for article-$number" >&2
+              exit 1
+            fi
             curl --fail-with-body --silent --show-error --proto '=https' --max-time 20 -X POST \
               -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
               "https://api.github.com/repos/$GITHUB_REPOSITORY/pages/builds"
             next_build=$((SECONDS+370))
           }
-          publish 00 v19-rss-00 baseline.html
           for attempt in $(seq 1 50); do
             curl -fsS --proto '=https' --max-time 20 "$gate/fixtures.zip" -o "$fixtures"
             marker=$(unzip -p "$fixtures" article/ready 2>/dev/null || true)
@@ -72,7 +82,7 @@ jobs:
             sleep 12
           done
           test "$marker" = codex-blind-20261128-v19
-          for number in $(seq -w 1 24); do
+          for number in $(seq -w 8 24); do
             if (( SECONDS < next_build )); then sleep "$((next_build-SECONDS))"; fi
             ref="v19-rss-$number"
             page="release-$number.html"
@@ -80,6 +90,7 @@ jobs:
             test -s "$dir/$page"
             version="$ref@sha256:$(sha256sum "$dir/$page" | cut -d' ' -f1)"
             publish "$number" "$ref" "$page"
+            if [[ "$blocked" == true ]]; then continue; fi
             seen=false
             for attempt in $(seq 1 60); do
               state=$(curl -fsS --proto '=https' --max-time 10 "$gate/done/article/$version")
