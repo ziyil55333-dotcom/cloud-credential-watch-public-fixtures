@@ -2,7 +2,7 @@ name: Publish project OCI and APK retest
 on:
   push:
     branches: [codex-project-specialty-20261128]
-    paths: ['specialty-0[0-3].zip']
+    paths: ['specialty-0[0-3].zip', '.github/workflows/project-specialty.yml']
 permissions:
   contents: write
   packages: write
@@ -21,9 +21,10 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t pairs < <(git diff --name-only HEAD^ HEAD -- 'specialty-*.zip')
+          if (( ${#pairs[@]} == 0 )); then pairs=(specialty-00.zip); fi
           test "${#pairs[@]}" = 1
           pair="${pairs[0]}"
-          [[ "$pair" =~ ^specialty-0([0-3]).zip$ ]]
+          [[ "$pair" =~ ^specialty-0([0-3])[.]zip$ ]]
           seqno="${BASH_REMATCH[1]}"
           dir=project-apk-acceptance
           apk="credential-watch-1.0.$seqno.apk"
@@ -38,7 +39,9 @@ jobs:
             sudo apt-get install -y -qq skopeo
           fi
           printf '%s' "$REGISTRY_TOKEN" | skopeo login --authfile "$RUNNER_TEMP/registry.json" --username "$GITHUB_ACTOR" --password-stdin ghcr.io
-          skopeo copy --preserve-digests --authfile "$RUNNER_TEMP/registry.json" --digestfile "$RUNNER_TEMP/published-digest" "oci-archive:$RUNNER_TEMP/image.tar" "docker://ghcr.io/$GITHUB_REPOSITORY:project-specialty-20261128"
+          mkdir "$RUNNER_TEMP/layout"
+          tar --extract --no-same-owner --no-same-permissions --file "$RUNNER_TEMP/image.tar" --directory "$RUNNER_TEMP/layout"
+          skopeo copy --preserve-digests --authfile "$RUNNER_TEMP/registry.json" --digestfile "$RUNNER_TEMP/published-digest" "oci:$RUNNER_TEMP/layout" "docker://ghcr.io/$GITHUB_REPOSITORY:project-specialty-20261128"
           cat "$RUNNER_TEMP/published-digest"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
