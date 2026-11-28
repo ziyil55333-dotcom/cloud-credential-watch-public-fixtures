@@ -1,0 +1,10 @@
+{
+  "releases": [
+    {
+      "version": "1.0.0",
+      "sha256": "sha256:1afd17a0076e33c5ae19cadc417217ce920b8e57cf01bad9091f5445e166ba8b",
+      "size": 8593,
+      "url": "apk/credential-watch-1.0.0.apk"
+    }
+  ]
+}
