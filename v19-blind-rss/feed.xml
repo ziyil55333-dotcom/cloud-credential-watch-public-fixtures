@@ -14,5 +14,10 @@
       <link>https://ziyil55333-dotcom.github.io/cloud-credential-watch-public-fixtures/v19-blind-rss/release-01.html</link>
       <guid isPermaLink="false">v19-rss-01</guid>
     </item>
+    <item>
+      <title>Synthetic fixture v19-rss-02</title>
+      <link>https://ziyil55333-dotcom.github.io/cloud-credential-watch-public-fixtures/v19-blind-rss/release-02.html</link>
+      <guid isPermaLink="false">v19-rss-02</guid>
+    </item>
   </channel>
 </rss>
