@@ -1,0 +1,47 @@
+name: Publish project OCI and APK retest
+on:
+  push:
+    branches: [codex-project-specialty-20261128]
+    paths: ['specialty-0[0-3].zip']
+permissions:
+  contents: write
+  packages: write
+jobs:
+  publish:
+    if: github.repository == 'ziyil55333-dotcom/cloud-credential-watch-public-fixtures' && github.actor == 'ziyil55333-dotcom'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 2
+      - name: Publish the selected synthetic pair
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mapfile -t pairs < <(git diff --name-only HEAD^ HEAD -- 'specialty-*.zip')
+          test "${#pairs[@]}" = 1
+          pair="${pairs[0]}"
+          [[ "$pair" =~ ^specialty-0([0-3]).zip$ ]]
+          seqno="${BASH_REMATCH[1]}"
+          dir=project-apk-acceptance
+          apk="credential-watch-1.0.$seqno.apk"
+          mkdir -p "$dir/apk"
+          unzip -p "$pair" releases.json > "$dir/releases.json"
+          unzip -p "$pair" "$apk" > "$dir/apk/$apk"
+          expected=$(jq -er --arg v "1.0.$seqno" '.releases[] | select(.version == $v) | .sha256' "$dir/releases.json")
+          test "sha256:$(sha256sum "$dir/apk/$apk" | cut -d' ' -f1)" = "$expected"
+          unzip -p "$pair" image.tar > "$RUNNER_TEMP/image.tar"
+          if ! command -v skopeo >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq skopeo
+          fi
+          printf '%s' "$REGISTRY_TOKEN" | skopeo login --authfile "$RUNNER_TEMP/registry.json" --username "$GITHUB_ACTOR" --password-stdin ghcr.io
+          skopeo copy --preserve-digests --authfile "$RUNNER_TEMP/registry.json" --digestfile "$RUNNER_TEMP/published-digest" "oci-archive:$RUNNER_TEMP/image.tar" "docker://ghcr.io/$GITHUB_REPOSITORY:project-specialty-20261128"
+          cat "$RUNNER_TEMP/published-digest"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- "$dir/releases.json" "$dir/apk/$apk"
+          git commit -m "Publish project retest APK 1.0.$seqno"
+          git push origin HEAD:refs/heads/codex-project-specialty-20261128
