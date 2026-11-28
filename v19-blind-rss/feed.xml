@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss version="2.0">
+  <channel>
+    <title>Cloud Credential Watch project synthetic fixture feed</title>
+    <link>https://ziyil55333-dotcom.github.io/cloud-credential-watch-public-fixtures/v19-blind-rss/feed.xml</link>
+    <description>Dedicated synthetic evaluation releases</description>
+    <item>
+      <title>Synthetic fixture v19-rss-00</title>
+      <link>https://ziyil55333-dotcom.github.io/cloud-credential-watch-public-fixtures/v19-blind-rss/baseline.html</link>
+      <guid isPermaLink="false">v19-rss-00</guid>
+    </item>
+  </channel>
+</rss>
