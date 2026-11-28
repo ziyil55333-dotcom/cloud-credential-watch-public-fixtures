@@ -1,0 +1,82 @@
+name: Publish v19 synthetic OCI and APK test versions
+on:
+  push:
+    branches: [codex-blind-20261128-v19-publisher]
+    paths: ['.github/workflows/ccw-v19-oci-apk.yml']
+permissions:
+  contents: write
+  packages: write
+concurrency: ccw-v19-oci-apk-publisher
+jobs:
+  publish:
+    if: github.repository == 'ziyil55333-dotcom/cloud-credential-watch-public-fixtures' && github.actor == 'ziyil55333-dotcom'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Publish clean baselines and gate later test versions
+        shell: bash
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gate=https://clicks-singer-passes-auction.trycloudflare.com/publisher/v19
+          branch=codex-blind-20261128-v19-publisher
+          tag=codex-blind-20261128-v19
+          catalog=v19-blind-apk
+          registry="ghcr.io/$GITHUB_REPOSITORY:$tag"
+          auth="$RUNNER_TEMP/ccw-registry.json"
+          baseline="$RUNNER_TEMP/ccw-baseline.zip"
+          fixtures="$RUNNER_TEMP/ccw-fixtures.zip"
+          layout="$RUNNER_TEMP/ccw-layout"
+          digestfile="$RUNNER_TEMP/ccw-digest"
+          if ! command -v skopeo >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq skopeo
+          fi
+          printf '%s' "$REGISTRY_TOKEN" | skopeo login --authfile "$auth" --username "$GITHUB_ACTOR" --password-stdin ghcr.io
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          mkdir -p "$catalog/apk" "$layout"
+          publish() {
+            local archive="$1" name="$2" number="$3" version="1.0.$((10#$3))" apk expected
+            apk="credential-watch-$version.apk"
+            unzip -p "$archive" "catalogs/$number.json" > "$catalog/releases.json"
+            unzip -p "$archive" "apk/$apk" > "$catalog/apk/$apk"
+            expected=$(jq -er --arg v "$version" '.releases[] | select(.version == $v) | .sha256' "$catalog/releases.json")
+            test "sha256:$(sha256sum "$catalog/apk/$apk" | cut -d' ' -f1)" = "$expected"
+            unzip -p "$archive" "oci/$name.tar" | tar -xf - -C "$layout"
+            skopeo copy --quiet --preserve-digests --authfile "$auth" --digestfile "$digestfile" "oci:$layout" "docker://$registry"
+            oci=$(cat "$digestfile")
+            test "$oci" = "$(jq -er '.manifests[0].digest' "$layout/index.json")"
+            apk_version="$version@$expected"
+            git add -- "$catalog/releases.json" "$catalog/apk/$apk"
+            git commit --quiet -m "Publish synthetic v19 APK release $number"
+            git push origin "HEAD:refs/heads/$branch"
+            printf 'published oci-%s %s\npublished apk-%s %s\n' "$number" "$oci" "$number" "$apk_version"
+          }
+          curl -fsS --proto '=https' --max-time 30 "$gate/baseline.zip" -o "$baseline"
+          publish "$baseline" baseline 00
+          for attempt in $(seq 1 60); do
+            result=$(curl -sS --proto '=https' --max-time 25 -w '%{http_code}' "$gate/fixtures.zip" -o "$fixtures")
+            case "$result" in
+              200) break ;;
+              404) sleep 8 ;;
+              *) echo "Fixture staging HTTP $result" >&2; exit 1 ;;
+            esac
+          done
+          test "$result" = 200
+          for number in $(seq -w 1 24); do
+            publish "$fixtures" "release-$number" "$number"
+            seen=false
+            for attempt in $(seq 1 50); do
+              oci_state=$(curl -fsS --proto '=https' --max-time 8 "$gate/done/oci/$oci")
+              apk_state=$(curl -fsS --proto '=https' --max-time 8 "$gate/done/apk/$apk_version")
+              if [[ "$oci_state" == done && "$apk_state" == done ]]; then seen=true; break; fi
+              sleep 5
+            done
+            if [[ "$seen" != true ]]; then
+              echo "Detector did not acknowledge OCI/APK release $number" >&2
+              exit 1
+            fi
+          done
