@@ -38,3 +38,5 @@ jobs:
           retention-days: 14
       - name: Leave time for read-only public verification
         run: sleep 160
+
+# Project-side live demonstration, 2026-11-28.
